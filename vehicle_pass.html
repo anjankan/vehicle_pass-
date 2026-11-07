@@ -1,0 +1,458 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<meta name="theme-color" content="#1f6f5c">
+<title>Vehicle Pass Register</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,"Noto Sans Tamil","Nirmala UI",sans-serif;background:#f4f1ea;color:#1d1d1d;font-size:16px}
+header{background:#1f6f5c;color:#fff;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:5;gap:6px;flex-wrap:wrap}
+header h1{font-size:18px;margin:0}
+header .hb{display:flex;gap:4px}
+header button{background:none;border:1px solid #ffffff99;color:#fff;border-radius:8px;padding:6px 9px;font-size:14px;font-family:inherit}
+main{padding:12px;max-width:560px;margin:0 auto 40px}
+.bigmic{width:100%;padding:18px 10px;border:0;border-radius:16px;background:#1f6f5c;color:#fff;font-size:20px;font-weight:600;box-shadow:0 3px 0 #164f41;font-family:inherit;margin-bottom:8px}
+.bigmic.on{background:#c0392b;box-shadow:0 3px 0 #8e2a20;animation:pulse 1s infinite}
+@keyframes pulse{50%{opacity:.7}}
+.hint{font-size:13px;color:#666;margin:0 0 10px;text-align:center}
+#status{min-height:40px;padding:8px 4px;color:#333;font-size:15px}
+#status.err{color:#b00020}
+.card{background:#fff;border-radius:14px;padding:12px;box-shadow:0 1px 4px #0001}
+.field{margin-bottom:12px}
+.field>label{display:block;font-size:14px;color:#555;margin-bottom:4px;font-weight:600}
+.row{display:flex;gap:8px;align-items:center}
+input[type=text],input[type=date],textarea{width:100%;padding:11px;font-size:16px;border:1px solid #ccc;border-radius:10px;font-family:inherit;background:#fff}
+textarea{min-height:64px;resize:vertical}
+.mic{flex:none;width:48px;height:46px;border:0;border-radius:10px;background:#e4f0ec;font-size:20px}
+.mic.on{background:#c0392b;color:#fff}
+.seg{display:flex;gap:8px}
+.seg label{flex:1;text-align:center;padding:11px 6px;border:1px solid #ccc;border-radius:10px;background:#fff;font-size:15px;cursor:pointer}
+.seg input{display:none}
+.seg input:checked+span{font-weight:700}
+.seg label:has(input:checked){background:#e4f0ec;border-color:#1f6f5c;color:#1f6f5c}
+.check{display:flex;align-items:center;gap:10px;font-size:15px;margin:4px 0 10px}
+.check input{width:22px;height:22px}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}
+.btn{padding:14px;border:0;border-radius:12px;background:#1f6f5c;color:#fff;font-size:16px;font-family:inherit}
+.btn.alt{background:#eee;color:#222}
+.btn.pri{background:#e8a317;color:#222;font-weight:700}
+.btn.wide{grid-column:1/-1}
+dialog{border:0;border-radius:16px;padding:16px;width:min(94vw,480px);font-family:inherit;max-height:90vh;overflow:auto}
+dialog::backdrop{background:#0006}
+dialog h3{margin:6px 0 8px}
+dialog input,dialog select{width:100%;padding:10px;font-size:16px;margin:4px 0 10px;border:1px solid #ccc;border-radius:10px;font-family:inherit}
+.rec{padding:10px 4px;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.rec small{color:#666}
+.badge{font-size:12px;padding:2px 6px;border-radius:6px;background:#eee}
+.badge.pend{background:#fde6c0}
+.badge.ok{background:#d8efe6}
+.empty{color:#888;text-align:center;padding:18px}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Vehicle Pass Register</h1>
+  <div class="hb">
+    <button id="btnRecords">Records <span id="pendCount"></span></button>
+    <button id="btnSettings">Settings</button>
+  </div>
+</header>
+
+<main>
+  <button type="button" class="bigmic" id="speakAll">🎤 Speak all details</button>
+  <p class="hint">Say e.g. “vehicle number TN 09 AB 1234, owner name Ravi Kumar, two wheeler, member, plot 45, comments …”</p>
+  <div id="status"></div>
+
+  <form id="form" class="card" autocomplete="off" onsubmit="return false">
+    <div class="field">
+      <label for="vehicle">1. Vehicle number</label>
+      <div class="row"><input type="text" id="vehicle" placeholder="TN 09 AB 1234"><button type="button" class="mic" data-mic="vehicle" title="Speak">🎤</button></div>
+    </div>
+
+    <div class="field">
+      <label for="ownerName">2. Owner name</label>
+      <div class="row"><input type="text" id="ownerName"><button type="button" class="mic" data-mic="ownerName" title="Speak">🎤</button></div>
+    </div>
+
+    <div class="field">
+      <label>3. Vehicle type</label>
+      <div class="row">
+        <div class="seg" style="flex:1">
+          <label><input type="radio" name="vtype" value="2 Wheeler"><span>2 Wheeler</span></label>
+          <label><input type="radio" name="vtype" value="4 Wheeler"><span>4 Wheeler</span></label>
+        </div>
+        <button type="button" class="mic" data-mic="type" title="Speak">🎤</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>4. Vehicle owner type</label>
+      <div class="row">
+        <div class="seg" style="flex:1">
+          <label><input type="radio" name="otype" value="Member"><span>Member</span></label>
+          <label><input type="radio" name="otype" value="Tenant"><span>Tenant</span></label>
+        </div>
+        <button type="button" class="mic" data-mic="ownerType" title="Speak">🎤</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="plot">5. Plot number</label>
+      <div class="row"><input type="text" id="plot" placeholder="e.g. 45"><button type="button" class="mic" data-mic="plot" title="Speak">🎤</button></div>
+    </div>
+
+    <div class="field">
+      <label for="passDate">6. Pass issued date</label>
+      <div class="row"><input type="date" id="passDate"><button type="button" class="mic" data-mic="date" title="Speak">🎤</button></div>
+    </div>
+
+    <div class="field">
+      <label class="check"><input type="checkbox" id="used"> 7. Used vehicle — ownership transfer pending</label>
+      <div id="challanBox" style="display:none">
+        <div class="row"><input type="date" id="challanDate"><button type="button" class="mic" data-mic="challan" title="Speak">🎤</button></div>
+        <small style="color:#666">Delivery challan date (for follow-up)</small>
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="comments">8. Other comments</label>
+      <div class="row"><textarea id="comments"></textarea><button type="button" class="mic" data-mic="comments" title="Speak">🎤</button></div>
+    </div>
+  </form>
+
+  <div class="actions">
+    <button type="button" class="btn alt" id="btnNew">Clear form</button>
+    <button type="button" class="btn pri" id="btnSave">Save to register</button>
+    <button type="button" class="btn alt wide" id="btnCancelEdit" style="display:none">Cancel edit</button>
+  </div>
+</main>
+
+<!-- Records on this phone -->
+<dialog id="recDlg">
+  <h3>Records on this phone</h3>
+  <p class="hint">“sent” rows are in the Google Sheet. “pending” rows will be sent when the phone is online.</p>
+  <div id="recList"></div>
+  <div class="row" style="display:flex;gap:8px;margin-top:10px">
+    <button class="btn" id="btnSendNow" style="flex:1">Send pending now</button>
+    <button class="btn alt" id="closeRec" style="flex:1">Close</button>
+  </div>
+</dialog>
+
+<!-- Settings -->
+<dialog id="setDlg">
+  <h3>Settings</h3>
+  <label>Google Sheet web app link</label>
+  <input type="text" id="cfgUrl" placeholder="https://script.google.com/macros/s/.../exec">
+  <label>Access code (same as in Code.gs)</label>
+  <input type="text" id="cfgToken">
+  <label>Voice language</label>
+  <select id="cfgVoice">
+    <option value="en-IN">English (India)</option>
+    <option value="ta-IN">Tamil (தமிழ்)</option>
+  </select>
+  <div style="display:flex;gap:8px"><button class="btn" id="saveSet" style="flex:1">Save</button><button class="btn alt" id="closeSet" style="flex:1">Close</button></div>
+</dialog>
+
+<script>
+const $ = id => document.getElementById(id);
+const KEY_REC = 'vp.records.v1', KEY_CFG = 'vp.config.v1';
+const LABEL = {vehicle:'Vehicle number', ownerName:'Owner name', type:'Vehicle type', ownerType:'Owner type', plot:'Plot number', date:'Pass issued date', challan:'Delivery challan date', comments:'Comments', used:'Used vehicle'};
+
+let cfg = load(KEY_CFG, {url:'', token:'', voice:'en-IN'});
+let records = load(KEY_REC, []);
+let editingId = null;
+
+function load(k, d){ try{ const v = JSON.parse(localStorage.getItem(k)); return v ?? d; }catch(e){ return d; } }
+function save(){
+  try{ localStorage.setItem(KEY_REC, JSON.stringify(records)); localStorage.setItem(KEY_CFG, JSON.stringify(cfg)); }
+  catch(e){ setStatus('Could not save on this phone (storage full).', true); }
+  updatePending();
+}
+function setStatus(m, err){ const s = $('status'); s.textContent = m; s.className = err ? 'err' : ''; }
+const pad = n => String(n).padStart(2, '0');
+const isoDay = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const dmy = s => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s || ''); return m ? `${m[3]}/${m[2]}/${m[1]}` : ''; };
+const uid = () => 'v' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+const updatePending = () => { const n = records.filter(r => !r.synced).length; $('pendCount').textContent = n ? `(${n} pending)` : ''; };
+
+/* ---------- spoken words -> values ---------- */
+const NUMW = {zero:'0', oh:'0', o:'0', one:'1', two:'2', three:'3', four:'4', five:'5', six:'6', seven:'7', eight:'8', nine:'9', ten:'10', eleven:'11', twelve:'12', thirteen:'13', fourteen:'14', fifteen:'15', sixteen:'16', seventeen:'17', eighteen:'18', nineteen:'19'};
+const TENS = {twenty:20, thirty:30, forty:40, fifty:50, sixty:60, seventy:70, eighty:80, ninety:90};
+const UNITS = {one:1, two:2, three:3, four:4, five:5, six:6, seven:7, eight:8, nine:9};
+const words = t => String(t).toLowerCase().replace(/[^a-z0-9஀-௿\s]/g, ' ').split(/\s+/).filter(Boolean);
+// "four five" -> 4 5, "forty five" -> 45, "nine" -> 9
+function digitsFrom(tokens){
+  const out = [];
+  for(let i = 0; i < tokens.length; i++){
+    const w = tokens[i];
+    if(TENS[w] !== undefined && UNITS[tokens[i+1]] !== undefined){ out.push(String(TENS[w] + UNITS[tokens[i+1]])); i++; continue; }
+    if(TENS[w] !== undefined){ out.push(String(TENS[w])); continue; }
+    if(NUMW[w] !== undefined){ out.push(NUMW[w]); continue; }
+    out.push(w);
+  }
+  return out;
+}
+const parseCode = t => digitsFrom(words(t)).join('').replace(/[^A-Za-z0-9஀-௿]/g, '').toUpperCase();
+const parseVehicle = t => parseCode(t);
+const parsePlot = t => parseCode(t);
+const tidy = t => String(t).trim().replace(/^(is|name is|name)\s+/i, '').replace(/[\s,.;:]+$/, '').trim();
+const parseName = t => tidy(t);
+const parseComments = t => tidy(t);
+function parseType(t){
+  const s = String(t).toLowerCase();
+  if(/\b(2|two)\b|bike|scooter|two.?wheel|2.?wheel/.test(s)) return '2 Wheeler';
+  if(/\b(4|four)\b|\bcar\b|four.?wheel|4.?wheel/.test(s)) return '4 Wheeler';
+  return '';
+}
+function parseOwnerType(t){
+  const s = String(t).toLowerCase();
+  if(/tenant|rent/.test(s)) return 'Tenant';
+  if(/member|owner/.test(s)) return 'Member';
+  return '';
+}
+function parseDate(t){
+  const s = String(t).toLowerCase();
+  if(/\btoday\b/.test(s)) return isoDay(new Date());
+  if(/yesterday/.test(s)){ const d = new Date(); d.setDate(d.getDate() - 1); return isoDay(d); }
+  const m = /(\d{1,2})\s*[\/\-. ]\s*(\d{1,2})\s*[\/\-. ]\s*(\d{4})/.exec(s);
+  if(m) return `${m[3]}-${pad(m[2])}-${pad(m[1])}`;
+  return '';
+}
+const PARSE = {vehicle:parseVehicle, ownerName:parseName, type:parseType, ownerType:parseOwnerType, plot:parsePlot, date:parseDate, challan:parseDate, comments:parseComments, used:t => (String(t).trim() ? 'yes' : '')};
+
+// Splits one long sentence by its field words: "vehicle number ... owner name ... plot 45 ..."
+const FIELD_WORDS = [
+  ['vehicle number','vehicle'], ['vehicle no','vehicle'], ['vehicle type','type'],
+  ['owner type','ownerType'], ['owner name','ownerName'], ['owner','ownerName'],
+  ['plot number','plot'], ['plot','plot'],
+  ['delivery challan date','challan'], ['challan date','challan'], ['challan','challan'],
+  ['pass issued date','date'], ['pass date','date'], ['issued date','date'], ['date','date'],
+  ['comments','comments'], ['comment','comments'], ['remarks','comments']
+];
+// Words that give a value even without their field word (said in a long sentence)
+const VALUE_WORDS = [
+  ['two wheeler','type'], ['2 wheeler','type'], ['four wheeler','type'], ['4 wheeler','type'], ['bike','type'], ['scooter','type'],
+  ['tenant','ownerType'], ['member','ownerType'], ['used vehicle','used']
+];
+const ALL_WORDS = [...FIELD_WORDS, ...VALUE_WORDS];
+const FIELD_RE = new RegExp('\\b(' + [...ALL_WORDS].sort((a, b) => b[0].length - a[0].length).map(k => k[0]).join('|') + ')\\b', 'g');
+function splitFields(text){
+  const src = String(text);
+  const lower = src.toLowerCase();
+  const hits = []; let m;
+  FIELD_RE.lastIndex = 0;
+  while((m = FIELD_RE.exec(lower))){
+    const k = ALL_WORDS.find(x => x[0] === m[1]);
+    hits.push({kw: m[1], field: k[1], value: VALUE_WORDS.includes(k), at: m.index, end: m.index + m[0].length});
+  }
+  // value words are ignored inside a comment, so comments keep their full text
+  let current = null;
+  const keep = hits.filter(h => { if(!h.value){ current = h.field; return true; } return current !== 'comments'; });
+  const segs = keep.map((h, i) => ({h, text: src.slice(h.value ? h.at : h.end, i + 1 < keep.length ? keep[i+1].at : src.length).trim()}));
+  const res = {};
+  for(const pass of [false, true]){                 // field words first, then bare value words
+    for(const {h, text} of segs){
+      if(h.value === pass && text && res[h.field] === undefined) res[h.field] = text;
+    }
+  }
+  return res;
+}
+
+/* ---------- filling the form ---------- */
+function setField(f, v){
+  if(f === 'vehicle') $('vehicle').value = v;
+  else if(f === 'ownerName') $('ownerName').value = v;
+  else if(f === 'plot') $('plot').value = v;
+  else if(f === 'comments') $('comments').value = v;
+  else if(f === 'date') $('passDate').value = v;
+  else if(f === 'challan'){ $('used').checked = true; toggleChallan(); $('challanDate').value = v; }
+  else if(f === 'used'){ $('used').checked = true; toggleChallan(); }
+  else if(f === 'type') setRadio('vtype', v);
+  else if(f === 'ownerType') setRadio('otype', v);
+}
+function setRadio(n, v){ document.querySelectorAll(`input[name="${n}"]`).forEach(r => r.checked = (r.value === v)); }
+function checked(n){ const r = document.querySelector(`input[name="${n}"]:checked`); return r ? r.value : ''; }
+function toggleChallan(){ $('challanBox').style.display = $('used').checked ? 'block' : 'none'; }
+$('used').onchange = toggleChallan;
+
+function readForm(){
+  return {
+    vehicle: $('vehicle').value.trim().toUpperCase().replace(/\s+/g, ''),
+    ownerName: $('ownerName').value.trim(),
+    vehicleType: checked('vtype'),
+    ownerType: checked('otype'),
+    plot: $('plot').value.trim().toUpperCase(),
+    passDate: $('passDate').value,
+    challanDate: $('used').checked ? $('challanDate').value : '',
+    comments: $('comments').value.trim()
+  };
+}
+function clearForm(){
+  $('form').reset();
+  setRadio('vtype', ''); setRadio('otype', '');
+  $('passDate').value = isoDay(new Date());
+  $('used').checked = false; toggleChallan();
+  $('challanDate').value = '';
+  editingId = null;
+  $('btnSave').textContent = 'Save to register';
+  $('btnCancelEdit').style.display = 'none';
+}
+function loadRecord(id){
+  const r = records.find(x => x.id === id); if(!r) return;
+  clearForm();
+  $('vehicle').value = r.vehicle; $('ownerName').value = r.ownerName; $('plot').value = r.plot;
+  setRadio('vtype', r.vehicleType); setRadio('otype', r.ownerType);
+  $('passDate').value = r.passDate; $('comments').value = r.comments || '';
+  if(r.challanDate){ $('used').checked = true; toggleChallan(); $('challanDate').value = r.challanDate; }
+  editingId = r.id;
+  $('btnSave').textContent = 'Update record';
+  $('btnCancelEdit').style.display = 'block';
+  setStatus('Editing ' + r.vehicle + '. Change the fields and tap Update record.');
+  $('recDlg').close();
+  window.scrollTo(0, 0);
+}
+
+/* ---------- voice ---------- */
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let rec = null, listeningFor = null;
+function markMic(){
+  document.querySelectorAll('[data-mic]').forEach(b => b.classList.toggle('on', b.dataset.mic === listeningFor));
+  $('speakAll').classList.toggle('on', listeningFor === 'all');
+}
+function listen(target, onAlts){
+  if(!SR){ setStatus('Voice typing is not supported in this browser. Please use Chrome.', true); return; }
+  if(listeningFor){ try{ rec.stop(); }catch(e){} return; }
+  rec = new SR();
+  rec.lang = cfg.voice || 'en-IN';
+  rec.continuous = false; rec.interimResults = false; rec.maxAlternatives = 5;
+  rec.onresult = e => { const alts = []; const res = e.results[0]; for(let i = 0; i < res.length; i++) alts.push(res[i].transcript); onAlts(alts); };
+  rec.onerror = e => { if(e.error !== 'aborted') setStatus('Voice error: ' + e.error + '. Tap the mic and try again.', true); };
+  rec.onend = () => { listeningFor = null; markMic(); };
+  listeningFor = target; markMic();
+  setStatus(target === 'all' ? 'Listening… say all the details' : 'Listening… say ' + LABEL[target]);
+  try{ rec.start(); }catch(e){ listeningFor = null; markMic(); setStatus('Could not start the microphone. Try again.', true); }
+}
+
+document.querySelectorAll('[data-mic]').forEach(b => b.onclick = () => {
+  const f = b.dataset.mic;
+  listen(f, alts => {
+    for(const a of alts){
+      const seg = splitFields(a)[f] ?? a;          // "owner name ravi" said in the owner box still works
+      const v = PARSE[f](seg);
+      if(v){ setField(f, v); setStatus('Filled ' + LABEL[f] + ': ' + v); return; }
+    }
+    setStatus('Could not read ' + LABEL[f] + '. Heard: “' + alts[0] + '”. Try again.', true);
+  });
+});
+
+$('speakAll').onclick = () => listen('all', alts => {
+  for(const a of alts){
+    const res = splitFields(a);
+    if(Object.keys(res).length){
+      const done = [], miss = [];
+      for(const [f, seg] of Object.entries(res)){
+        const v = PARSE[f](seg);
+        if(v){ setField(f, v); done.push(LABEL[f]); } else miss.push(LABEL[f]);
+      }
+      let msg = 'Filled: ' + (done.join(', ') || 'nothing');
+      if(miss.length) msg += '. Could not read: ' + miss.join(', ');
+      setStatus(msg + '. Check the form, then Save.', miss.length > 0);
+      return;
+    }
+  }
+  setStatus('No field words heard. Say “vehicle number …”, “owner name …”, etc. Heard: “' + alts[0] + '”', true);
+});
+
+/* ---------- save and send ---------- */
+function toSheet(r){
+  return {id: r.id, createdAt: r.createdAt, vehicle: r.vehicle, ownerName: r.ownerName, vehicleType: r.vehicleType,
+          ownerType: r.ownerType, plot: r.plot, passDate: dmy(r.passDate), challanDate: dmy(r.challanDate), comments: r.comments};
+}
+async function sendPending(){
+  const pending = records.filter(r => !r.synced);
+  if(!pending.length){ updatePending(); return 0; }
+  if(!cfg.url){ setStatus(pending.length + ' record(s) saved on this phone. Add the Google Sheet link in Settings to send them.'); return 0; }
+  let sent = 0, lastErr = '';
+  for(const r of pending){
+    try{
+      const res = await fetch(cfg.url, {method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
+                                        body: JSON.stringify({token: cfg.token, record: toSheet(r)})});
+      const j = await res.json();
+      if(j.ok){ r.synced = true; sent++; } else lastErr = j.error || 'rejected';
+    }catch(e){ lastErr = 'no internet'; }
+  }
+  save();
+  const left = records.filter(r => !r.synced).length;
+  if(left) setStatus(sent + ' sent. ' + left + ' still pending (' + lastErr + ').', true);
+  else setStatus(sent ? 'Saved to the Google Sheet.' : 'Saved.');
+  return sent;
+}
+
+$('btnSave').onclick = async () => {
+  const v = readForm();
+  const missing = [];
+  if(!v.vehicle) missing.push('Vehicle number');
+  if(!v.ownerName) missing.push('Owner name');
+  if(!v.vehicleType) missing.push('Vehicle type');
+  if(!v.ownerType) missing.push('Owner type');
+  if(!v.plot) missing.push('Plot number');
+  if(!v.passDate) missing.push('Pass issued date');
+  if($('used').checked && !v.challanDate) missing.push('Delivery challan date');
+  if(missing.length){ setStatus('Please fill: ' + missing.join(', '), true); return; }
+
+  if(!editingId){
+    const old = records.find(r => r.vehicle === v.vehicle);
+    if(old && !confirm('This vehicle already has a pass entry (' + (old.ownerName || '') + ', ' + dmy(old.passDate) + '). Save another entry?')) return;
+  }
+  const existing = editingId ? records.find(r => r.id === editingId) : null;
+  const rec = {id: editingId || uid(), createdAt: existing ? existing.createdAt : new Date().toISOString(),
+               ...v, updatedAt: new Date().toISOString(), synced: false};
+  records = [rec, ...records.filter(r => r.id !== rec.id)];
+  save();
+  const wasEditing = !!editingId;
+  clearForm();
+  await sendPending();
+  if(wasEditing) setStatus('Record updated.');
+};
+
+$('btnNew').onclick = () => { clearForm(); setStatus('Form cleared.'); };
+$('btnCancelEdit').onclick = () => { clearForm(); setStatus('Edit cancelled.'); };
+
+/* ---------- records dialog ---------- */
+function renderRecords(){
+  $('recList').innerHTML = records.length ? records.map(r =>
+    `<div class="rec"><div><b>${esc(r.vehicle)}</b> · ${esc(r.ownerName)}<br>
+       <small>${esc(r.vehicleType)} · ${esc(r.ownerType)} · Plot ${esc(r.plot)} · Issued ${dmy(r.passDate)}${r.challanDate ? ' · Challan ' + dmy(r.challanDate) : ''}</small>
+       ${r.comments ? `<br><small>${esc(r.comments)}</small>` : ''}</div>
+       <div style="text-align:right;flex:none"><span class="badge ${r.synced ? 'ok' : 'pend'}">${r.synced ? 'sent' : 'pending'}</span><br>
+       <button class="btn alt" style="padding:6px 10px;margin-top:6px" data-edit="${r.id}">Edit</button></div></div>`).join('')
+    : '<div class="empty">No records on this phone yet.</div>';
+}
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+$('recList').onclick = e => { const b = e.target.closest('[data-edit]'); if(b) loadRecord(b.dataset.edit); };
+$('btnRecords').onclick = () => { renderRecords(); $('recDlg').showModal(); };
+$('closeRec').onclick = () => $('recDlg').close();
+$('btnSendNow').onclick = async () => { await sendPending(); renderRecords(); };
+
+/* ---------- settings ---------- */
+$('btnSettings').onclick = () => {
+  $('cfgUrl').value = cfg.url || ''; $('cfgToken').value = cfg.token || ''; $('cfgVoice').value = cfg.voice || 'en-IN';
+  $('setDlg').showModal();
+};
+$('saveSet').onclick = () => {
+  cfg = {url: $('cfgUrl').value.trim(), token: $('cfgToken').value.trim(), voice: $('cfgVoice').value};
+  save(); $('setDlg').close(); setStatus('Settings saved.');
+};
+$('closeSet').onclick = () => $('setDlg').close();
+window.addEventListener('online', () => { if(records.some(r => !r.synced)) sendPending(); });
+
+/* ---------- start ---------- */
+clearForm();
+updatePending();
+setStatus(cfg.url ? 'Ready. Records are sent to the Google Sheet.' : 'Ready. Open Settings and add the Google Sheet link to start sending.');
+</script>
+</body>
+</html>
